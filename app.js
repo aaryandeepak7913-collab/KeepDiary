@@ -208,6 +208,35 @@ async function initLockScreen() {
   }
 }
 
+document.getElementById("restoreDriveBtn").addEventListener("click", () => {
+  if (!tokenClient) { toast("Google Drive isn't configured yet — see README.md."); return; }
+  state.driveIntent = "restore";
+  tokenClient.requestAccessToken();
+});
+
+async function handleRestore() {
+  try {
+    const fileId = await findDriveVaultFile();
+    if (!fileId) { toast("No diary found in Drive for this Google account."); return; }
+    const remote = await downloadDriveVault(fileId);
+    state.vault = {
+      salt: remote.salt,
+      verifier: remote.verifier,
+      entries: remote.entries || {},
+      streak: remote.streak || { current: 0, longest: 0, lastEntryDate: null },
+      driveFileId: fileId,
+    };
+    await saveVaultLocal();
+    document.getElementById("setupView").classList.add("hidden");
+    document.getElementById("unlockView").classList.remove("hidden");
+    document.getElementById("unlockError").textContent = "";
+    toast("Diary found — enter its password to unlock.");
+  } catch (err) {
+    console.error(err);
+    toast("Couldn't restore from Drive. Check your connection and try again.");
+  }
+}
+
 document.getElementById("setupSubmit").addEventListener("click", async () => {
   const p1 = document.getElementById("setupPassword").value;
   const p2 = document.getElementById("setupPasswordConfirm").value;
@@ -619,8 +648,13 @@ function initGoogleClient() {
       if (resp.error) { toast("Google sign-in failed."); return; }
       state.driveAccessToken = resp.access_token;
       await idbSet("driveConnected", true);
-      refreshDriveStatusUI();
-      await syncWithDrive();
+      if (state.driveIntent === "restore") {
+        state.driveIntent = "sync";
+        await handleRestore();
+      } else {
+        refreshDriveStatusUI();
+        await syncWithDrive();
+      }
     },
   });
 }
@@ -728,6 +762,43 @@ function mergeEntries(localEntries, remoteEntries) {
   return merged;
 }
 
+async function linkToRemoteVault(remote) {
+  const pass = window.prompt(
+    "This Google account already has a Keep diary using a different password.\n" +
+    "Enter that diary's password to link this device to it:"
+  );
+  if (!pass) return false;
+  try {
+    const remoteKey = await deriveKeyFromPassword(pass, remote.salt);
+    const check = await aesDecrypt(remoteKey, remote.verifier);
+    if (check !== "keep-vault-ok") throw new Error("bad password");
+
+    // Re-encrypt any entries written on this device under the correct key before merging.
+    const oldKey = state.vaultKey;
+    const reEncrypted = {};
+    for (const [date, payload] of Object.entries(state.vault.entries)) {
+      try {
+        const plain = await aesDecrypt(oldKey, payload);
+        const fresh = await aesEncrypt(remoteKey, plain);
+        fresh.updatedAt = payload.updatedAt;
+        reEncrypted[date] = fresh;
+      } catch {
+        // Entry was already unreadable (e.g. from an earlier bad merge) — drop it rather than propagate it.
+      }
+    }
+    state.vault.salt = remote.salt;
+    state.vault.verifier = remote.verifier;
+    state.vault.entries = mergeEntries(reEncrypted, remote.entries);
+    state.vaultKey = remoteKey;
+    await idbDelete("bio"); // any biometric unlock was bound to the old key
+    refreshBiometricStatusUI();
+    return true;
+  } catch {
+    toast("Wrong password for that diary — sync cancelled.");
+    return false;
+  }
+}
+
 async function syncWithDrive() {
   if (!state.driveAccessToken) return;
   toast("Syncing…");
@@ -735,13 +806,15 @@ async function syncWithDrive() {
     const fileId = state.vault.driveFileId || (await findDriveVaultFile());
     if (fileId) {
       const remote = await downloadDriveVault(fileId);
-      // Entries are already encrypted — only merge ciphertext blobs, never plaintext.
-      if (remote.salt && remote.salt !== state.vault.salt && Object.keys(state.vault.entries).length === 0) {
-        // Fresh device, existing remote vault: adopt it wholesale (still password-locked with its own salt).
-        toast("Found an existing diary on Drive. Unlock it with that diary's password next time.");
-      }
-      state.vault.entries = mergeEntries(state.vault.entries, remote.entries);
       state.vault.driveFileId = fileId;
+
+      if (remote.salt && remote.salt !== state.vault.salt) {
+        // Different password/salt on each side — never merge raw ciphertext across encryption domains.
+        const linked = await linkToRemoteVault(remote);
+        if (!linked) return;
+      } else {
+        state.vault.entries = mergeEntries(state.vault.entries, remote.entries);
+      }
     }
     recomputeStreak();
     await saveVaultLocal();
