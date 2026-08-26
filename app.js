@@ -4,7 +4,7 @@
    CONFIG — you must fill this in. See README.md.
    ========================================================= */
 const CONFIG = {
-  GOOGLE_CLIENT_ID: 607277864672-ndkbborg6n4601ekh48uiv3i82ugk58i.apps.googleusercontent.com,
+  GOOGLE_CLIENT_ID: "607277864672-ndkbborg6n4601ekh48uiv3i82ugk58i.apps.googleusercontent.com",
   DRIVE_SCOPE: "https://www.googleapis.com/auth/drive.file",
   DRIVE_FILE_NAME: "keep-diary-vault.json",
 };
