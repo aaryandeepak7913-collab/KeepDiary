@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover" />
+<meta name="theme-color" content="#14172B" />
+<title>Keep — a private diary</title>
+<link rel="manifest" href="manifest.json" />
+<link rel="icon" href="icons/icon-192.png" />
+<link rel="apple-touch-icon" href="icons/icon-192.png" />
+<link rel="stylesheet" href="style.css" />
+</head>
+<body>
+
+  <!-- LOCK SCREEN -->
+  <section id="lockScreen" class="screen lock-screen">
+    <div class="lock-card">
+      <div class="cover" id="cover">
+        <div class="cover-flame" id="lockFlame">🔥</div>
+        <h1 class="brand">Keep</h1>
+        <p class="brand-sub">a private diary</p>
+      </div>
+
+      <div id="setupView" class="hidden">
+        <h2>Set your password</h2>
+        <p class="muted">This unlocks your diary and encrypts every entry. There's no reset — write it down somewhere safe.</p>
+        <input type="password" id="setupPassword" placeholder="Choose a password" autocomplete="new-password" />
+        <input type="password" id="setupPasswordConfirm" placeholder="Confirm password" autocomplete="new-password" />
+        <p class="error" id="setupError"></p>
+        <button class="btn-primary" id="setupSubmit">Create diary</button>
+      </div>
+
+      <div id="unlockView" class="hidden">
+        <h2>Welcome back</h2>
+        <input type="password" id="unlockPassword" placeholder="Password" autocomplete="current-password" />
+        <p class="error" id="unlockError"></p>
+        <button class="btn-primary" id="unlockSubmit">Unlock</button>
+        <button class="btn-ghost hidden" id="biometricUnlockBtn">Unlock with biometrics</button>
+      </div>
+    </div>
+  </section>
+
+  <!-- MAIN APP -->
+  <section id="appScreen" class="screen app-screen hidden">
+    <header class="topbar">
+      <div class="brand-mini">Keep</div>
+      <div class="streak-pill" id="streakPill" title="Current streak">
+        <span class="streak-flame">🔥</span>
+        <span id="streakCount">0</span>
+      </div>
+      <div class="topbar-actions">
+        <button class="icon-btn" id="syncBtn" title="Sync with Google Drive">⇅</button>
+        <button class="icon-btn" id="settingsBtn" title="Settings">⚙</button>
+        <button class="icon-btn" id="lockBtn" title="Lock">🔒</button>
+      </div>
+    </header>
+
+    <main class="content">
+      <section class="calendar-panel">
+        <div class="calendar-header">
+          <button class="nav-btn" id="prevMonth">‹</button>
+          <h2 id="monthLabel">Month Year</h2>
+          <button class="nav-btn" id="nextMonth">›</button>
+        </div>
+        <div class="weekday-row">
+          <span>S</span><span>M</span><span>T</span><span>W</span><span>T</span><span>F</span><span>S</span>
+        </div>
+        <div class="calendar-grid" id="calendarGrid"></div>
+        <div class="streak-summary">
+          <div><span class="stat-num" id="currentStreakStat">0</span><span class="stat-label">day streak</span></div>
+          <div><span class="stat-num" id="longestStreakStat">0</span><span class="stat-label">longest streak</span></div>
+          <div><span class="stat-num" id="totalEntriesStat">0</span><span class="stat-label">entries</span></div>
+        </div>
+      </section>
+
+      <section class="entry-panel" id="entryPanel">
+        <div class="entry-empty" id="entryEmpty">
+          <p>Pick a day on the calendar, or write about today.</p>
+          <button class="btn-primary" id="writeTodayBtn">Write about today</button>
+        </div>
+        <div class="entry-editor hidden" id="entryEditor">
+          <div class="entry-header">
+            <h3 id="entryDateLabel">Today</h3>
+            <button class="icon-btn" id="closeEntryBtn">✕</button>
+          </div>
+          <textarea id="entryText" placeholder="Write freely. This is only for you."></textarea>
+          <div class="entry-footer">
+            <span class="save-status" id="saveStatus"></span>
+            <button class="btn-primary" id="saveEntryBtn">Save entry</button>
+          </div>
+        </div>
+      </section>
+    </main>
+  </section>
+
+  <!-- SETTINGS DRAWER -->
+  <section id="settingsDrawer" class="drawer hidden">
+    <div class="drawer-card">
+      <div class="drawer-header">
+        <h2>Settings</h2>
+        <button class="icon-btn" id="closeSettingsBtn">✕</button>
+      </div>
+
+      <div class="settings-block">
+        <h3>Google Drive sync</h3>
+        <p class="muted" id="driveStatus">Not connected.</p>
+        <button class="btn-secondary" id="connectDriveBtn">Connect Google Drive</button>
+        <button class="btn-ghost hidden" id="disconnectDriveBtn">Disconnect</button>
+      </div>
+
+      <div class="settings-block">
+        <h3>Biometric unlock</h3>
+        <p class="muted" id="biometricStatus">Checking device support…</p>
+        <button class="btn-secondary hidden" id="enableBiometricBtn">Enable biometric unlock</button>
+        <button class="btn-ghost hidden" id="disableBiometricBtn">Disable biometric unlock</button>
+      </div>
+
+      <div class="settings-block">
+        <h3>Change password</h3>
+        <input type="password" id="oldPasswordInput" placeholder="Current password" autocomplete="current-password" />
+        <input type="password" id="newPasswordInput" placeholder="New password" autocomplete="new-password" />
+        <p class="error" id="changePasswordError"></p>
+        <button class="btn-secondary" id="changePasswordBtn">Update password</button>
+      </div>
+
+      <div class="settings-block danger-block">
+        <h3>Danger zone</h3>
+        <p class="muted">Erases everything stored on this device. If Drive sync is connected and up to date, your entries remain there.</p>
+        <button class="btn-danger" id="wipeDeviceBtn">Erase this device</button>
+      </div>
+    </div>
+  </section>
+
+  <div class="toast hidden" id="toast"></div>
+
+  <script src="https://accounts.google.com/gsi/client" async defer></script>
+  <script src="app.js"></script>
+</body>
+</html>
