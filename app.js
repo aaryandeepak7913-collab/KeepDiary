@@ -4,7 +4,7 @@
    CONFIG — you must fill this in. See README.md.
    ========================================================= */
 const CONFIG = {
-  GOOGLE_CLIENT_ID: "607277864672-ndkbborg6n4601ekh48uiv3i82ugk58i.apps.googleusercontent.com",
+  GOOGLE_CLIENT_ID: "YOUR_CLIENT_ID.apps.googleusercontent.com",
   DRIVE_SCOPE: "https://www.googleapis.com/auth/drive.file",
   DRIVE_FILE_NAME: "keep-diary-vault.json",
 };
@@ -289,6 +289,7 @@ function enterApp() {
   updateStreakUI();
   refreshDriveStatusUI();
   refreshBiometricStatusUI();
+  autoReconnectDrive();
 }
 
 document.getElementById("lockBtn").addEventListener("click", () => {
@@ -686,6 +687,19 @@ async function refreshDriveStatusUI() {
     connectBtn.classList.remove("hidden");
     connectBtn.textContent = "Connect Google Drive";
     disconnectBtn.classList.add("hidden");
+  }
+}
+
+async function autoReconnectDrive() {
+  if (!tokenClient) return;
+  const connected = await idbGet("driveConnected");
+  if (!connected) return;
+  try {
+    // Silent request: reuses the existing Google session in this browser if still valid.
+    // No popup shown unless Google decides re-consent is actually required.
+    tokenClient.requestAccessToken({ prompt: "" });
+  } catch (err) {
+    console.error(err);
   }
 }
 
