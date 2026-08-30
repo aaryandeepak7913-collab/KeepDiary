@@ -1,4 +1,4 @@
-const CACHE_NAME = "keep-diary-v2";
+const CACHE_NAME = "keep-diary-v3";
 const SHELL_FILES = [
   "./",
   "./index.html",
